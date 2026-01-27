@@ -28,37 +28,94 @@ async function run() {
 
     const tasksCollection = client.db('taskDB').collection('tasks');
 
-   //Get all tasks
-   app.get('/alltasks', async(req, res) =>{
-    const result = await tasksCollection.find().toArray();
-    res.send(result);
-   })
+    //Get all tasks
+    app.get('/alltasks', async (req, res) => {
+      const result = await tasksCollection.find().toArray();
+      res.send(result);
+    })
 
 
-   //get specific task information
-    app.get('/alltasks/:id', async(req, res) =>{
-      const id= req.params.id;
-      const query = {_id: new ObjectId(id)};
+    //get specific task information
+    app.get('/alltasks/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
       const result = await tasksCollection.findOne(query);
       res.send(result);
     })
 
 
-    // Get tasks with deadline from today -1 day on wards
+    // // Get tasks with deadline from today -1 day on wards
 
-    app.get('/tasks', async(req, res) =>{
-      const  result = await tasksCollection.find().sort({deadline:1}).limit(6).toArray();
+    app.get('/tasks', async (req, res) => {
+      const result = await tasksCollection.find().sort({ deadline: 1 }).limit(6).toArray();
       res.send(result);
     })
 
-    
-   // Post a new task
+
+    // Get tasks by user email (My Posted Tasks)
+    app.get('/mytasks', async (req, res) => {
+      const email = req.query.email;
+
+      if (!email) {
+        return res.send([]);
+      }
+
+      const result = await tasksCollection.find({ email }).toArray();
+      res.send(result);
+    });
+
+
+    // Update task
+    app.put('/tasks/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedTask = req.body;
+
+      const filter = { _id: new ObjectId(id) };
+
+      const updateDoc = {
+        $set: {
+          title: updatedTask.title,
+          category: updatedTask.category,
+          description: updatedTask.description,
+          deadline: updatedTask.deadline,
+          budget: updatedTask.budget,
+        }
+      };
+
+      const result = await tasksCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+
+    // Get single task for update
+    app.get('/tasks/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+      const result = await tasksCollection.findOne(query);
+      res.send(result);
+    });
+
+
+    // Post a new task
     app.post('/tasks', async (req, res) => {
       const newTask = req.body;
       console.log(newTask);
       const result = await tasksCollection.insertOne(newTask)
       res.send(result);
     })
+
+    // Delete a task
+    app.delete('/tasks/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+      const result = await tasksCollection.deleteOne(query);
+      res.send(result);
+    });
+
+
+
 
 
 
