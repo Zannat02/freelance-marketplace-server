@@ -18,42 +18,64 @@ const client = new MongoClient(uri, {
   }
 });
 
+// cache DB (VERY IMPORTANT for Vercel)
+let db;
 let tasksCollection;
 
-// Mongo connect once
 async function connectDB() {
-  if (!tasksCollection) {
-    await client.connect();
-    const db = client.db('taskDB');
-    tasksCollection = db.collection('tasks');
-    console.log("MongoDB connected");
-  }
+  if (db) return;
+
+  await client.connect();
+  db = client.db('taskDB');
+  tasksCollection = db.collection('tasks');
+
+  console.log("MongoDB connected");
 }
 
-connectDB().catch(console.dir);
+// middleware ensure DB ready
+app.use(async (req, res, next) => {
+  await connectDB();
+  next();
+});
 
-/* ---------------- ROUTES (UNCHANGED) ---------------- */
 
-// Get all tasks
+// ---------------- ROUTES (UNCHANGED LOGIC) ----------------
+
+// home
+app.get('/', (req, res) => {
+  res.send('Freelance marketplace server is running..');
+});
+
+
+// all tasks
 app.get('/alltasks', async (req, res) => {
   const result = await tasksCollection.find().toArray();
   res.send(result);
 });
 
-// Get specific task
+
+// single task
 app.get('/alltasks/:id', async (req, res) => {
-  const id = req.params.id;
-  const result = await tasksCollection.findOne({ _id: new ObjectId(id) });
+  const result = await tasksCollection.findOne({
+    _id: new ObjectId(req.params.id)
+  });
   res.send(result);
 });
 
-// Get tasks (latest 6)
+
+// latest tasks
 app.get('/tasks', async (req, res) => {
-  const result = await tasksCollection.find().sort({ deadline: 1 }).limit(6).toArray();
+  const result = await tasksCollection
+    .find()
+    .sort({ deadline: 1 })
+    .limit(6)
+    .toArray();
+
   res.send(result);
 });
 
-// My tasks
+
+// my tasks
 app.get('/mytasks', async (req, res) => {
   const email = req.query.email;
 
@@ -63,20 +85,18 @@ app.get('/mytasks', async (req, res) => {
   res.send(result);
 });
 
-// Update task
-app.put('/tasks/:id', async (req, res) => {
-  const id = req.params.id;
-  const updatedTask = req.body;
 
+// update task
+app.put('/tasks/:id', async (req, res) => {
   const result = await tasksCollection.updateOne(
-    { _id: new ObjectId(id) },
+    { _id: new ObjectId(req.params.id) },
     {
       $set: {
-        title: updatedTask.title,
-        category: updatedTask.category,
-        description: updatedTask.description,
-        deadline: updatedTask.deadline,
-        budget: updatedTask.budget,
+        title: req.body.title,
+        category: req.body.category,
+        description: req.body.description,
+        deadline: req.body.deadline,
+        budget: req.body.budget,
       }
     }
   );
@@ -84,45 +104,55 @@ app.put('/tasks/:id', async (req, res) => {
   res.send(result);
 });
 
-// Get single task
+
+// get single task
 app.get('/tasks/:id', async (req, res) => {
-  const id = req.params.id;
-  const result = await tasksCollection.findOne({ _id: new ObjectId(id) });
+  const result = await tasksCollection.findOne({
+    _id: new ObjectId(req.params.id)
+  });
+
   res.send(result);
 });
 
-// Post task
+
+// post task
 app.post('/tasks', async (req, res) => {
-  const newTask = req.body;
-  const result = await tasksCollection.insertOne(newTask);
+  const result = await tasksCollection.insertOne(req.body);
   res.send(result);
 });
 
-// Increase bid count
-app.patch('/tasks/bid/:id', async (req, res) => {
-  const id = req.params.id;
 
+// increase bid
+app.patch('/tasks/bid/:id', async (req, res) => {
   const result = await tasksCollection.updateOne(
-    { _id: new ObjectId(id) },
+    { _id: new ObjectId(req.params.id) },
     { $inc: { bidsCount: 1 } }
   );
 
   res.send(result);
 });
 
-// Delete task
+
+// delete task
 app.delete('/tasks/:id', async (req, res) => {
-  const id = req.params.id;
-  const result = await tasksCollection.deleteOne({ _id: new ObjectId(id) });
+  const result = await tasksCollection.deleteOne({
+    _id: new ObjectId(req.params.id)
+  });
+
   res.send(result);
 });
 
-/* ---------------- ROOT ---------------- */
 
-app.get('/', (req, res) => {
-  res.send('Freelance marketplace server is running..');
-});
+// ---------------- LOCAL + VERCEL HANDLING ----------------
 
 
+if (require.main === module) {
+  const port = process.env.PORT || 3000;
 
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
+
+// Vercel export
 module.exports = app;
