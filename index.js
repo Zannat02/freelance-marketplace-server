@@ -64,9 +64,21 @@ app.get('/alltasks/:id', async (req, res) => {
 
 
 // latest tasks
+// app.get('/tasks', async (req, res) => {
+//   const result = await tasksCollection
+//     .find()
+//     .sort({ deadline: 1 })
+//     .limit(6)
+//     .toArray();
+
+//   res.send(result);
+// });
+
+
+// latest tasks
 app.get('/tasks', async (req, res) => {
   const result = await tasksCollection
-    .find()
+    .find({ deadline: { $gte: new Date() } })
     .sort({ deadline: 1 })
     .limit(6)
     .toArray();
@@ -87,6 +99,24 @@ app.get('/mytasks', async (req, res) => {
 
 
 // update task
+// app.put('/tasks/:id', async (req, res) => {
+//   const result = await tasksCollection.updateOne(
+//     { _id: new ObjectId(req.params.id) },
+//     {
+//       $set: {
+//         title: req.body.title,
+//         category: req.body.category,
+//         description: req.body.description,
+//         deadline: req.body.deadline,
+//         budget: req.body.budget,
+//       }
+//     }
+//   );
+
+//   res.send(result);
+// });
+
+
 app.put('/tasks/:id', async (req, res) => {
   const result = await tasksCollection.updateOne(
     { _id: new ObjectId(req.params.id) },
@@ -95,7 +125,7 @@ app.put('/tasks/:id', async (req, res) => {
         title: req.body.title,
         category: req.body.category,
         description: req.body.description,
-        deadline: req.body.deadline,
+        deadline: new Date(req.body.deadline),
         budget: req.body.budget,
       }
     }
@@ -116,8 +146,19 @@ app.get('/tasks/:id', async (req, res) => {
 
 
 // post task
+// app.post('/tasks', async (req, res) => {
+//   const result = await tasksCollection.insertOne(req.body);
+//   res.send(result);
+// });
+
+
 app.post('/tasks', async (req, res) => {
-  const result = await tasksCollection.insertOne(req.body);
+  const taskData = {
+    ...req.body,
+    deadline: new Date(req.body.deadline),
+    bidsCount: 0,
+  };
+  const result = await tasksCollection.insertOne(taskData);
   res.send(result);
 });
 
